@@ -20,6 +20,7 @@ require 'fileutils'
 class Descartes
   class FansubReleases
     include Cinch::Plugin
+   
 
     def retrieve_posts(title)
       posts = []
@@ -52,14 +53,24 @@ class Descartes
       YAML.load_file(file) || {}
     end
 
-    match /released (.+)/,  method: :show_released
-    def show_released(m, title, limit = 3)
+    match /released( limit=[0-9]{1,2}){0,1} (.+)/,  method: :show_released
+    def show_released(m, limit, title)
       m.reply "Mi duole constatare che la biblioteca non abbia tomi." if get_fansub_urls().empty?
+      if limit.empty?
+        limit = 3
+      else
+        limit = limit.match("[0-9]{1,2}")[0].to_i
+        limit = 3 if limit == 0 #smartasses are everywhere!
+      end 
       posts = retrieve_posts(title.downcase)
       posts = posts.slice(0, limit) #==> getting the first #limit posts
       posts.each do |post|
       	m.reply "[#{post[:fansub_name]}] #{post[:item].title} -> #{post[:item].link}"
       end 
+    end
+
+    match /released_by (.*)/, method: :show_released_by
+    def show_released_by(m, fansubber)
     end
 
     match /fansub (list|show)/, method: :show_list
