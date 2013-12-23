@@ -22,22 +22,22 @@ class Descartes
     include Cinch::Plugin
 
     def retrieve_posts(title)
-      posts = Array.new()
+      posts = []
 
       #retrieving the feeds
-      for fansub_name, url in get_fansub_urls()
+      get_fansub_urls().each {|fansub_name, url|
         begin
           open(url) do |rss|
             feed = RSS::Parser.parse(rss)
             feed.items.each do |item|
-              posts.push {:item => item, :fansub_name => fansub_name} if item.title.downcase.include? title
+              posts << ({:item => item, :fansub_name => fansub_name}) if item.title.downcase.include? title
             end
           end
         rescue
           #probably the feed is malformed or not standard.
           #not warning the user at the moment.
         end
-      end 
+      }
 
       #ordering according to the publication date
       posts.sort! {|f_item, s_item| s_item[:item].pubDate - f_item[:item].pubDate}
@@ -52,18 +52,26 @@ class Descartes
       YAML.load_file(file) || {}
     end
 
-    match 'released? (.+)', :use_prefix =>false,  method: :show_released
+    match /released (.+)/,  method: :show_released
     def show_released(m, title, limit = 3)
+      m.reply "Mi duole constatare che la biblioteca non abbia tomi." if get_fansub_urls().empty?
       posts = retrieve_posts(title.downcase)
-      posts = posts.slice(0, limit+1) #==> getting the first #limit posts
+      posts = posts.slice(0, limit) #==> getting the first #limit posts
       posts.each do |post|
       	m.reply "[#{post[:fansub_name]}] #{post[:item].title} -> #{post[:item].link}"
       end 
     end
 
-    match /fansub add (\w{1,} (.*))/, method: :add_user
-    def add_user(m, fansub_name, rss_url)
-      urls              = get_fansub_urls
+    match /fansub (list|show)/, method: :show_list
+    def show_list(m)
+       get_fansub_urls().each{ |name, url|
+             m.reply "[#{name}] => #{url}" 
+         }
+    end
+
+    match /fansub add (\w{1,}) (.*)/, method: :add_fansub
+    def add_fansub(m, fansub_name, rss_url)
+      urls              = get_fansub_urls()
       urls[fansub_name] = rss_url
 
       file = File.join File.dirname(__FILE__), 'files', 'fansub_rss_feeds.yml'
@@ -72,8 +80,8 @@ class Descartes
       m.reply "Ok, added fansub #{fansub_name}."
     end
 
-    match /fansub remove (\w{1,})/,  method: :remove_user
-    def remove_user(m, fansub_name)
+    match /fansub remove (\w{1,})/,  method: :remove_fansub
+    def remove_fansub(m, fansub_name)
       urls = get_fansub_urls
       urls.delete fansub_name
 
