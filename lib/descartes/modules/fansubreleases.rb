@@ -54,9 +54,12 @@ class Descartes
     end
 
     match /released( limit=[0-9]{1,2}){0,1} (.+)/,  method: :show_released
+    #match /released\?( limit=[0-9]{1,2}){0,1} (.+)/, use_prefix: false, method: :show_released
     def show_released(m, limit, title)
       m.reply "Mi duole constatare che la biblioteca non abbia tomi." if get_fansub_urls().empty?
-      if limit.empty?
+      if not limit
+        limit = 3
+      elsif limit.empty?
         limit = 3
       else
         limit = limit.match("[0-9]{1,2}")[0].to_i
@@ -100,6 +103,18 @@ class Descartes
       File.open(file, ?w) { |f| f.write YAML.dump(urls) }
 
       m.reply "Ok, removed fansub #{fansub_name}."
+    end
+
+
+    match /fansub help/, method: :help
+    def help(m)
+       m.reply <<-HELP
+fansub is a cool module for your anime necessities!
+!released [limit=<1-99>] <title> ==> shows the list of releases for a given anime (output limited by optional parameter "limit")
+!fansub add <fansubname> <RSS_feed> ==> adds the fansub to the sources Descartes will look into
+!fansub remove <fansubname> ===> remove the fansub from the sources
+!fansub show => lists the fansubs. an alias is !fansub list
+       HELP
     end
 
   end
