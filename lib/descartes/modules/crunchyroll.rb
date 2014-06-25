@@ -18,17 +18,43 @@ require 'crunchyroll'
 class Descartes
   class Crunchybot
     include Cinch::Plugin
-    match /\.cr (.+)/, :use_prefix => false
 
-    def execute(m)
-      series = Crunchyroll::find m.params[1].split('.cr ')[1]
+    match  /^\.cr$/, use_prefix: false, method: :today
+    def today(m)
+      crunchyroll   = Crunchyroll.today
+
+      aired    = crunchyroll.select { |h| h[:airs] == :aired    }.map { |r| r[:title].colorize }.flatten.join(', ')[0..-2]
+      tomorrow = crunchyroll.select { |h| h[:airs] == :tomorrow }
+      today    = crunchyroll.select { |h| h[:airs] == :today    }
+
+      m.reply "Gli anime di oggi su #{'Crunchyroll'.colorize}:"
+
+      today.each { |series|
+        m.reply "#{series[:title].colorize} (tra #{series[:left].to_ita.colorize})"
+      }
+
+      m.reply '' if today.any?
+
+      if tomorrow.any?
+        m.reply "Domani trasmetterà (per via del fuso):"
+        tomorrow.each { |series|
+          m.reply "#{series[:title].colorize} (tra #{series[:left].to_ita.colorize})"
+        }
+      end
+
+      m.reply '' if tomorrow.any?
+      
+      m.reply "Sono stati già trasmessi: #{aired}." unless aired.empty?
+    end
+
+    match  /\.cr (.+)/, use_prefix: false, method: :get
+    def get(m)
+      series = Crunchyroll.get m.params[1].split('.cr ')[1]
       
       if series
-        # m.reply "#{Format(:red, series[:title])} is a series airing on #{Format(:red, series[:where])} at #{Format(:red, series[:day])} #{Format(:red, series[:hour])}:#{Format(:red, series[:min])} which is in #{Format(:red, series[:left])}."
-        m.reply "#{Format(:red, series[:title])} è una serie trasmessa da #{Format(:red, series[:where])} il #{Format(:red, series[:day].to_ita)} alle #{Format(:red, series[:hour])}:#{Format(:red, series[:min])}, cioè tra #{Format(:red, series[:left].to_ita)}."
+        m.reply "#{series[:title].colorize} è una serie trasmessa da #{series[:where].colorize} il #{series[:day].to_ita.colorize} alle #{series[:hour].colorize}:#{series[:min].colorize}, cioè tra #{series[:left].to_ita.colorize}."
       else
-        # m.reply Format(:red, 'Anime not found')
-        m.reply Format(:red, 'Anime non trovato')
+        m.reply 'Anime non trovato'.colorize
       end
     end
   end

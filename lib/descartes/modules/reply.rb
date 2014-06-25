@@ -16,10 +16,11 @@ class Descartes
   class Reply
     include Cinch::Plugin
     
-    match /.*\?/, :prefix => lambda { |m| m.bot.nick }
+    set :prefix, lambda { |m| Regexp.new "(.*)#{m.bot.nick}(.*)" }
+    match ??
 
     def execute(m)
-      file    = File.expand_path '../files/replies.txt', __FILE__
+      file = File.join $options[:dotfiles], 'replies.txt'
       m.reply [].tap { |ary|
         File.read(file).each_line { |line| ary << line unless line.strip.empty? }
       }.sample

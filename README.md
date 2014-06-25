@@ -1,8 +1,11 @@
 Descartes
-======
+========
+A very serious modular ruby bot for IRC. The finest spaghetti code.
 
-A very serious modular ruby bot for IRC.
-
+Install
+-------
 `gem install descartes`
 
-`descartes ReneDescartes irc.foo.bar #chan #anotherchan`
+Example
+-------
+`descartes -n Descartes -s irc.foo.bar -c "#fagets" -p dat_password`

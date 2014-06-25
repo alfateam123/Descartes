@@ -1,5 +1,4 @@
 #!/usr/bin/env ruby
-# encoding: UTF-8
 ##
 #            DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
 #                    Version 2, December 2004
@@ -15,26 +14,102 @@
 ##
 
 require 'descartes'
+require 'optparse'
+require 'fileutils'
 
-nickname  = ARGV[0]     || 'Descartes'
-server    = ARGV[1]     || 'irc.rizon.net'
-channels  = ARGV[2..-1] || ['#aggvistnurummor']
-plugins   = Descartes.load
+options = {
+  :nickname => 'Descartes',
+  :server   => 'irc.rizon.net',
+  :channels => ['#aggvistnurummor'],
+  :dotfiles => File.join(ENV['HOME'], '.descartes'),
+  :password => 'dat_password',
+  :exclude  => []
+}
+
+OptionParser.new { |o|
+  o.on '-n', '--nickname NICKNAME', 'bot\'s nickname' do |nickname|
+    options[:nickname] = nickname
+  end
+
+  o.on '-s', '--server SERVER', 'target IRC server' do |server|
+    options[:server] = server
+  end
+
+  o.on '-c', '--channel #chan1,#chan2', 'target channels' do |channels|
+    options[:channels] = channels.split(?,).map { |s| s.strip }
+  end
+
+  o.on '-d', '--dotfiles PATH', 'folder where store config files' do |dotfiles|
+    options[:dotfiles] = dotfiles
+  end
+
+  o.on '-p', '--password PASSWORD', 'target channel\'s password' do |password|
+    options[:password] = password
+  end
+
+  o.on '-e', '--exclude module1,module2', 'exclude modules' do |exclude|
+    options[:exclude] = exclude.split(?,).map { |s| s.strip.downcase }
+  end
+}.parse!
+
+files = File.join File.dirname(__FILE__), '../lib/descartes/modules/files'
+FileUtils.cp_r(files, options[:dotfiles]) unless File.directory? options[:dotfiles]
+
+Dir["#{options[:dotfiles]}/**/*"].each { |file|
+  lib = Dir["#{files}/**/*"].select { |f| File.basename(f) == File.basename(file) }.first
+  next unless lib
+  next unless lib.end_with? '.txt'
+
+  if File.read(lib) != File.read(file)
+    FileUtils.cp lib, options[:dotfiles]
+    puts "'#{file}' has been updated."
+  end
+}
+
+new_files = Dir["#{files}/**/*"].map { |f| File.basename(f) } - Dir["#{options[:dotfiles]}/**/*"].map { |f| File.basename(f) }
+new_files.each { |new_file|
+  FileUtils.cp File.join(files, new_file), options[:dotfiles]
+}
 
 Cinch::Bot.new {
   configure do |c|
-    c.nick     = nickname
+    c.nick     = options[:nickname]
     c.realname = 'Descartes'
     c.user     = 'Descartes'
-    c.server   = server
-    c.channels = channels
+    c.server   = options[:server]
+    c.channels = options[:channels]
     
-    c.plugins.plugins  = [Cinch::Plugins::Login] + plugins
-    c.plugins.options[Cinch::Plugins::Login] = { :password => 'dat_password' }
+    c.plugins.plugins  = [Cinch::Plugins::Login] + Descartes.load(options)
+    c.plugins.options[Cinch::Plugins::Login] = { :password => options[:password] }
   end
 
-  on :message, '!list' do |m|
-    m.reply m.bot.plugins.join ', '
+  on :message, '!help' do |m|
+    m.bot.plugins.each { |plugin|
+      plugin.handlers.each { |handler|
+        pattern = handler.pattern
+        name    = plugin.to_s.split('::')[1].split(?:)[0]
+
+        prefix = case pattern.prefix
+          when Regexp then pattern.prefix.source
+          when String then pattern.prefix
+          else            ''
+        end
+
+        suffix = case pattern.suffix
+          when Regexp then pattern.suffix.source
+          when String then pattern.suffix
+          else             ''
+        end
+
+        regex = case pattern.pattern
+          when Regexp then pattern.pattern.source
+          when String then pattern.pattern
+          else             ''
+        end
+
+        m.reply regex.empty? ? name : "#{name}: #{prefix}#{regex}#{suffix}"
+      }
+    }
   end
 
   on :message, '!è' do |m|
@@ -49,4 +124,11 @@ Cinch::Bot.new {
     m.reply '“…”'
   end
 
+  on :message, "!'" do |m|
+    m.reply ?`
+  end
+
+  on :message, '!version' do |m|
+    m.reply Descartes.version
+  end
 }.start

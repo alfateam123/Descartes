@@ -19,16 +19,16 @@ require 'nokogiri'
 class Descartes
   class Url
     include Cinch::Plugin
-    match /http(s)?:\/\/(\S+)/, :use_prefix => false
+    match /http(s)?:\/\/(\S+)/, use_prefix: false
 
     def execute(m, ssl, url)
       begin
-        page = Nokogiri::HTML(open("http#{ssl}://#{url}").read, nil, 'utf-8')
+        page = Nokogiri::HTML open("http#{ssl}://#{url}").read, nil, 'utf-8'
 
-        if url.match('youtube.com|youtu.be') != nil
-          m.reply page.css('//title').first.text.chomp(' - YouTube')
+        if url.match 'youtube.com|youtu.be'
+          m.reply "[Youtube] #{page.css('//title').first.text.chomp(' - YouTube')}".colorize :pink
         else
-          m.reply page.css('//title').first.text.strip
+          m.reply "[URL] #{page.css('//title').first.text.strip}".colorize :red
         end
       rescue; end
     end

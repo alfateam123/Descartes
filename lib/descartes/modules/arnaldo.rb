@@ -11,18 +11,15 @@
 # 
 #  0. You just DO WHAT THE FUCK YOU WANT TO.
 ##
+require 'arnaldo'
 
 class Descartes
-  def self.load(options)
-    $options = options
+  class Arnaldo
+    include Cinch::Plugin
+    match 'proverb'
 
-    Dir.glob(File.expand_path('../modules/*.rb', __FILE__)).each { |plugin|
-      name = plugin.split(?/).last.split(?.).first.downcase
-      require plugin unless $options[:exclude].include? name
-    }
-
-    return Descartes.constants.map { |p|
-      "Descartes::#{p}".split('::').inject(Object) { |o, c| o.const_get c }
-    }
+    def execute(m)
+      m.reply "“#{::Arnaldo.get}”".colorize
+    end
   end
 end
